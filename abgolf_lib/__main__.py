@@ -1,10 +1,11 @@
 import argparse
+import json
 import sys
 from os.path import isfile
 from timeit import default_timer
 
 from .compiler import compile_program, run
-from .parser import parse, Parse_Result_Type
+from .parser import parse, Parse_Result_Type, Parsed, Parse_Result
 from .utils import to_unicode_str
 
 if __name__ == "__main__":
@@ -65,7 +66,20 @@ if __name__ == "__main__":
 		if args.load:  # load the parsed program from file
 			if isfile(args.load):
 				parsed, result = None, None
-			# TODO: Load parsed program from json
+
+				with open(args.load, "r") as file:
+					try:  # read the file as json.
+						json_object = json.load(file)
+						parsed = Parsed.from_JSON(json_object["parsed"])
+						result = Parse_Result.from_JSON(json_object["result"])
+
+						print("The JSON file: '%s'. Was successfully loaded." % args.load)
+					except (KeyError, TypeError) as e:
+						# the json file is malformed.
+						print("The JSON file: '%s', is malformed" % args.load)
+						print("Error: %s" % repr(e))
+						sys.exit(1)
+
 			else:  # load file does not exist
 				pass
 				sys.exit(1)
@@ -89,9 +103,12 @@ if __name__ == "__main__":
 			# save the parsed program to a file
 			if args.save:
 				# convert the parsed program to json
+				json_object = {"parsed": parsed.to_JSON(), "result": result.toJSON()}
+
 				# save the json to a file
-				# TODO: Save parsed program to json.
-				pass
+				with open(args.save, "w") as file:
+					json.dump(json_object, file)
+					print("JSON outputted to: '%s'" % args.save)
 
 			if not isfile(args.input):
 				pass  # the input file does not exist
