@@ -8,44 +8,53 @@ from .compiler import compile_program, run
 from .parser import parse, Parse_Result_Type, Parsed, Parse_Result
 from .utils import to_unicode_str
 
-if __name__ == "__main__":
-	arg_handler = argparse.ArgumentParser(description="Run ABGolf")
 
-	arg_handler.add_argument("-p", "--print", action="store_true",
-	                         help="Prints the source code, using unicode characters.")
+def print_source(args) -> None:
+	print("Program as unicode characters:")
+	text = to_unicode_str(args.source)
+	if text:  # is text not null
+		print(text)
 
-	arg_handler.add_argument("-c", "--check", action="store_true",
-	                         help="Checks whether the source code is valid.")
 
-	arg_handler.add_argument("--save", action="store", type=str,
-	                         help="The path of the file to save the parsed program to.\n Will Overwrite any existing file")
+def parse_from_file(args):
+	if isfile(args.load):
+		with open(args.load, "r") as file:
+			try:  # read the file as json.
+				json_object = json.load(file)
+				parsed = Parsed.from_JSON(json_object["parsed"])
+				result = Parse_Result.from_JSON(json_object["result"])
 
-	arg_handler.add_argument("--load", action="store", type=str,
-	                         help="The path of the file to load the parsed program.")
+				print("The JSON file: '%s'. Was successfully loaded." % args.load)
 
-	arg_handler.add_argument("-s", "--source", action="store", type=str, required=True,
-	                         help="The path of the source file.")
+				return parsed, result
+			except (KeyError, TypeError) as e:
+				# the json file is malformed.
+				print("The JSON file: '%s', is malformed" % args.load)
+				print("Error: %s" % repr(e))
+				sys.exit(1)
 
-	arg_handler.add_argument("-o", "--output", action="store", default=None, type=str,
-	                         help="The path of the output file.")
+	else:  # load file does not exist
+		pass
+		sys.exit(1)
 
-	arg_handler.add_argument("-i", "--input", action="store", type=str,
-	                         help="The path of the input file.")
 
-	arg_handler.add_argument("-m", "--measured", action="store_true",
-	                         help="Should execution time be measured.")
+def parse_to_file(args, parsed, result) -> None:
+	# convert the parsed program to json
+	json_object = {"parsed": parsed.to_JSON(), "result": result.toJSON()}
 
-	args = arg_handler.parse_args()
+	# save the json to a file
+	with open(args.save, "w") as file:
+		json.dump(json_object, file)
+		print("JSON outputted to: '%s'" % args.save)
 
+
+def handle_args(args) -> None:
 	if not isfile(args.source):
 		pass  # source file does not exist
 		sys.exit(1)
 
 	if args.print:
-		print("Program as unicode characters:")
-		text = to_unicode_str(args.source)
-		if text:  # is text not null
-			print(text)
+		print_source(args)
 	else:
 
 		# set the name of the default output file to the same name as the source file
@@ -64,25 +73,7 @@ if __name__ == "__main__":
 
 		# parse the program
 		if args.load:  # load the parsed program from file
-			if isfile(args.load):
-				parsed, result = None, None
-
-				with open(args.load, "r") as file:
-					try:  # read the file as json.
-						json_object = json.load(file)
-						parsed = Parsed.from_JSON(json_object["parsed"])
-						result = Parse_Result.from_JSON(json_object["result"])
-
-						print("The JSON file: '%s'. Was successfully loaded." % args.load)
-					except (KeyError, TypeError) as e:
-						# the json file is malformed.
-						print("The JSON file: '%s', is malformed" % args.load)
-						print("Error: %s" % repr(e))
-						sys.exit(1)
-
-			else:  # load file does not exist
-				pass
-				sys.exit(1)
+			parsed, result = parse_from_file(args)
 		else:
 			# parse the program from source
 			parsed, result = parse(source_path=args.source)
@@ -102,13 +93,7 @@ if __name__ == "__main__":
 
 			# save the parsed program to a file
 			if args.save:
-				# convert the parsed program to json
-				json_object = {"parsed": parsed.to_JSON(), "result": result.toJSON()}
-
-				# save the json to a file
-				with open(args.save, "w") as file:
-					json.dump(json_object, file)
-					print("JSON outputted to: '%s'" % args.save)
+				parse_to_file(args, parsed, result)
 
 			if not isfile(args.input):
 				pass  # the input file does not exist
@@ -139,3 +124,35 @@ if __name__ == "__main__":
 
 			# TODO: Check measure flag, and output run times.
 			pass  # because formatter puts above line on previous indent
+
+
+if __name__ == "__main__":
+	arg_handler = argparse.ArgumentParser(description="Run ABGolf")
+
+	arg_handler.add_argument("-p", "--print", action="store_true",
+	                         help="Prints the source code, using unicode characters.")
+
+	arg_handler.add_argument("-c", "--check", action="store_true",
+	                         help="Checks whether the source code is valid.")
+
+	arg_handler.add_argument("--save", action="store", type=str,
+	                         help="The path of the file to save the parsed program to.\n Will Overwrite any existing file")
+
+	arg_handler.add_argument("--load", action="store", type=str,
+	                         help="The path of the file to load the parsed program.")
+
+	arg_handler.add_argument("-s", "--source", action="store", type=str, required=True,
+	                         help="The path of the source file.")
+
+	arg_handler.add_argument("-o", "--output", action="store", default=None, type=str,
+	                         help="The path of the output file.")
+
+	arg_handler.add_argument("-i", "--input", action="store", type=str,
+	                         help="The path of the input file.")
+
+	arg_handler.add_argument("-m", "--measured", action="store_true",
+	                         help="Should execution time be measured.")
+
+	args_ = arg_handler.parse_args()
+
+	handle_args(args_)
