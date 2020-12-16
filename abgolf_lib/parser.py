@@ -1,5 +1,5 @@
 import json
-from enum import Enum, auto
+from enum import IntEnum, auto
 from typing import Tuple, List, Optional, Any, Dict
 
 from .functions import Function, supported_functions, Dimension
@@ -63,7 +63,7 @@ class Parsed:
 		return parsed
 
 
-class Parse_Result_Type(Enum):
+class Parse_Result_Type(IntEnum):
 	PARSING = auto()
 	SUCCESS = auto()
 	INVALID_FUNCTION = auto()
@@ -113,6 +113,40 @@ class Parse_Result:
 			output += "\nWhich can only take Types: %s" % (self.current_function.input_type_names or "Any")
 
 		return output
+
+	def toJSON(self):
+		class_dict: Dict[str, Any] = {}
+
+		class_dict["result_type"] = self.result_type
+		class_dict["byte_number"] = self.byte_number
+
+		if self.current_function is not None:
+			class_dict["current_function"] = self.current_function.to_JSON()
+		else:
+			class_dict["current_function"] = self.current_function
+
+		class_dict["data"] = self.data
+		class_dict["info"] = self.info
+
+		return json.dumps(class_dict)
+
+	@classmethod
+	def from_JSON(cls, data: str):
+		class_dict = json.loads(data)
+
+		parse_result = cls(Parse_Result_Type(class_dict["result_type"]))
+
+		parse_result.byte_number = class_dict["byte_number"]
+
+		if class_dict["current_function"] is not None:
+			parse_result.current_function = Function.from_JSON(class_dict["current_function"])
+		else:
+			parse_result.current_function = class_dict["current_function"]
+
+		parse_result.data = class_dict["data"]
+		parse_result.info = class_dict["info"]
+
+		return parse_result
 
 
 def parse(source_path: str) -> Tuple[Parsed, Parse_Result]:
